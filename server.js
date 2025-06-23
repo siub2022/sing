@@ -3,11 +3,17 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
+const path = require('path'); // ✅ Serve static files
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname))); // ✅ Serve files like cms.html
 
 // PostgreSQL connection pool
 const pool = new Pool({
@@ -15,12 +21,9 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-app.use(cors());
-app.use(express.json());
-
-// Root route
+// Serve cms.html on root route
 app.get('/', (req, res) => {
-  res.send('🧠 CMS is alive and connected to PostgreSQL!');
+  res.sendFile(path.join(__dirname, 'cms.html')); // ✅ Load CMS UI
 });
 
 // CREATE a user
