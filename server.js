@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
-const path = require('path'); // ✅ Serve static files
+const path = require('path'); // ✅ For serving static files
 
 dotenv.config();
 
@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname))); // ✅ Serve files like cms.html
+app.use(express.static(path.join(__dirname))); // ✅ Serve static files like cms.html
 
 // PostgreSQL connection pool
 const pool = new Pool({
@@ -21,9 +21,9 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// Serve cms.html on root route
+// Serve cms.html on root
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'cms.html')); // ✅ Load CMS UI
+  res.sendFile(path.join(__dirname, 'cms.html'));
 });
 
 // CREATE a user
@@ -41,13 +41,14 @@ app.post('/users', async (req, res) => {
   }
 });
 
-// READ all users
+// READ all users (with debug logging)
 app.get('/users', async (req, res) => {
+  console.log('📥 GET /users hit');
   try {
     const result = await pool.query('SELECT * FROM "user" ORDER BY usercode');
     res.json(result.rows);
   } catch (err) {
-    console.error('READ error:', err);
+    console.error('🔥 READ error:', err);
     res.status(500).json({ error: 'Error retrieving users' });
   }
 });
