@@ -80,7 +80,11 @@ app.delete('/users/:usercode', async (req, res) => {
     res.status(500).json({ error: 'Error deleting user' });
   }
 });
-
+// ✅ Add this ping route BELOW all other routes:
+app.get('/ping', (req, res) => {
+  console.log('🔔 /ping route hit');
+  res.send('pong');
+});
 // Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
