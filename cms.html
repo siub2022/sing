@@ -1,146 +1,80 @@
+<!-- cms.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CMS Control Panel</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      max-width: 600px;
-    }
-    input, button {
-      margin: 5px 0;
-      padding: 8px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #007BFF;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    pre {
-      background: #f4f4f4;
-      padding: 10px;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      max-height: 300px;
-      overflow: auto;
-    }
-    .status {
-      margin: 10px 0;
-      color: green;
-    }
-    h2 {
-      margin-top: 30px;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CMS</title>
 </head>
 <body>
+<h1>User Management</h1>
 
-<h1>CMS Control Panel</h1>
+<div>
+  <input id="usercode" placeholder="User Code" />
+  <input id="userdetail" placeholder="User Detail" />
+  <button onclick="createUser()">Create User</button>
+</div>
 
-<h2>Create User</h2>
-<input type="text" id="create-code" placeholder="User Code" />
-<input type="text" id="create-detail" placeholder="User Detail" />
-<button onclick="createUser()">Create</button>
-
-<h2>Update User</h2>
-<input type="text" id="update-code" placeholder="User Code to Update" />
-<input type="text" id="update-detail" placeholder="New User Detail" />
-<button onclick="updateUser()">Update</button>
-
-<h2>Delete User</h2>
-<input type="text" id="delete-code" placeholder="User Code to Delete" />
-<button onclick="deleteUser()">Delete</button>
-
-<h2>All Users</h2>
-<button onclick="fetchUsers()">Retrieve Users</button>
-<div class="status" id="status"></div>
-<pre id="output"></pre>
+<div>
+  <button onclick="retrieveUsers()">Retrieve Users</button>
+  <div class="status" id="status" style="color: red;"></div>
+  <ul id="userlist"></ul>
+</div>
 
 <script>
-  const api = 'http://localhost:3000/users'; // Updated for local backend
-
-  function showMessage(msg, isError = false) {
-    const status = document.getElementById('status');
-    status.style.color = isError ? 'red' : 'green';
-    status.textContent = msg;
-  }
+  const baseURL = 'https://sing-6855.onrender.com';
 
   async function createUser() {
-    const usercode = document.getElementById('create-code').value.trim();
-    const userdetail = document.getElementById('create-detail').value.trim();
-    if (!usercode || !userdetail) return alert('Enter both usercode and detail');
+    const usercode = document.getElementById('usercode').value;
+    const userdetail = document.getElementById('userdetail').value;
+    const status = document.getElementById('status');
+    status.innerText = '';
 
     try {
-      const res = await fetch(api, {
+      const response = await fetch(`${baseURL}/users`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usercode, userdetail })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ usercode, userdetail }),
       });
-      const data = await res.json();
-      showMessage(data.message || 'User created');
-      fetchUsers();
-      document.getElementById('create-code').value = '';
-      document.getElementById('create-detail').value = '';
+
+      if (!response.ok) throw new Error('Error creating user');
+      status.style.color = 'green';
+      status.innerText = 'User created successfully!';
+      document.getElementById('usercode').value = '';
+      document.getElementById('userdetail').value = '';
+      retrieveUsers();
     } catch (err) {
-      showMessage('Error creating user', true);
+      console.error(err);
+      status.style.color = 'red';
+      status.innerText = 'Error creating user';
     }
   }
 
-  async function updateUser() {
-    const usercode = document.getElementById('update-code').value.trim();
-    const userdetail = document.getElementById('update-detail').value.trim();
-    if (!usercode || !userdetail) return alert('Enter code and new detail');
-
+  async function retrieveUsers() {
+    const status = document.getElementById('status');
+    status.innerText = '';
     try {
-      const res = await fetch(`${api}/${usercode}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userdetail })
+      const response = await fetch(`${baseURL}/users`);
+      if (!response.ok) throw new Error('Error retrieving users');
+
+      const users = await response.json();
+      const userlist = document.getElementById('userlist');
+      userlist.innerHTML = '';
+      users.forEach(({ usercode, userdetail }) => {
+        const li = document.createElement('li');
+        li.textContent = `${usercode} - ${userdetail}`;
+        userlist.appendChild(li);
       });
-      const data = await res.json();
-      showMessage(data.message || 'User updated');
-      fetchUsers();
-      document.getElementById('update-code').value = '';
-      document.getElementById('update-detail').value = '';
     } catch (err) {
-      showMessage('Error updating user', true);
+      console.error(err);
+      status.style.color = 'red';
+      status.innerText = 'Error retrieving users';
     }
   }
 
-  async function deleteUser() {
-    const usercode = document.getElementById('delete-code').value.trim();
-    if (!usercode) return alert('Enter usercode to delete');
-
-    try {
-      const res = await fetch(`${api}/${usercode}`, {
-        method: 'DELETE'
-      });
-      const data = await res.json();
-      showMessage(data.message || 'User deleted');
-      fetchUsers();
-      document.getElementById('delete-code').value = '';
-    } catch (err) {
-      showMessage('Error deleting user', true);
-    }
-  }
-
-  async function fetchUsers() {
-    try {
-      const res = await fetch(api);
-      const data = await res.json();
-      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
-    } catch (err) {
-      showMessage('Error retrieving users', true);
-    }
-  }
-
-  fetchUsers();
+  window.onload = retrieveUsers;
 </script>
-
 </body>
 </html>
