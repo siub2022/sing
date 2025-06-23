@@ -1,10 +1,9 @@
-<!-- cms.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>CMS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </head>
 <body>
 <h1>User Management</h1>
@@ -25,21 +24,29 @@
   const baseURL = 'https://sing-6855.onrender.com';
 
   async function createUser() {
-    const usercode = document.getElementById('usercode').value;
-    const userdetail = document.getElementById('userdetail').value;
+    const usercode = document.getElementById('usercode').value.trim();
+    const userdetail = document.getElementById('userdetail').value.trim();
     const status = document.getElementById('status');
     status.innerText = '';
+    status.style.color = 'red';
+
+    if (!usercode || !userdetail) {
+      status.innerText = 'Please enter both User Code and User Detail';
+      return;
+    }
 
     try {
       const response = await fetch(`${baseURL}/users`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ usercode, userdetail }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usercode, userdetail })
       });
 
-      if (!response.ok) throw new Error('Error creating user');
+      if (!response.ok) {
+        const errorMsg = await response.text();
+        throw new Error(errorMsg || 'Error creating user');
+      }
+
       status.style.color = 'green';
       status.innerText = 'User created successfully!';
       document.getElementById('usercode').value = '';
@@ -47,7 +54,6 @@
       retrieveUsers();
     } catch (err) {
       console.error(err);
-      status.style.color = 'red';
       status.innerText = 'Error creating user';
     }
   }
@@ -69,7 +75,6 @@
       });
     } catch (err) {
       console.error(err);
-      status.style.color = 'red';
       status.innerText = 'Error retrieving users';
     }
   }
