@@ -1,10 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8" />
+    <title>Alumni Singing Club 🎶</title>
+    <style>
+        body {
+          font-family: sans-serif;
+          margin: 20px;
+        }
+        input {
+          padding: 5px;
+          margin: 5px;
+        }
+        table {
+          border-collapse: collapse;
+          margin-top: 15px;
+          width: 100%;
+        }
+        th, td {
+          border: 1px solid #ccc;
+          padding: 8px;
+        }
+        th {
+          background-color: #f2f2f2;
+        }
+        #status {
+          font-weight: bold;
+          margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-$END$
+
+<h2>Alumni Song Submission 🎤</h2>
+
+<div id="status">Loading submission status...</div>
+
+<!-- Admin Controls -->
+<h3>🎛️ Admin Controls</h3>
+<div>
+    <input id="openpass" placeholder="Password to open" />
+    <button onclick="adminToggle('open')">Admin Open</button>
+</div>
+<div>
+    <input id="closepass" placeholder="Password to close" />
+    <button onclick="adminToggle('close')">Admin Close</button>
+</div>
+
+<!-- Submission Form -->
+<div id="formsection" style="display: none;">
+    <h4>🎵 Enter Your Song Title</h4>
+    <input id="usercode" placeholder="User Code (8 characters)" maxlength="8" />
+    <input id="userdetail" placeholder="Song Title" />
+    <button onclick="createUser()">Create</button>
+</div>
+
+<!-- Song List -->
+<table>
+    <thead>
+    <tr><th>表演歌曲（Song Title）</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="usertable"></tbody>
+</table>
+
+<script>
+    async function checkSubmissionStatus() {
+      try {
+        const res = await fetch('/admin/status');
+        const data = await res.json();
+        const form = document.getElementById('formsection');
+        const status = document.getElementById('status');
+        form.style.display = data.mode === 'open' ? 'block' : 'none';
+        status.innerText = data.mode === 'open'
+          ? '✅ Submissions are OPEN'
+          : '🚫 Submissions are CLOSED';
+      } catch (err) {
+        console.error('Status check failed:', err);
+      }
+    }
+
+    async function adminToggle(action) {
+      const passId = action === 'open' ? 'openpass' : 'closepass';
+      const password = document.getElementById(passId).value;
+      try {
+        const res = await fetch('/admin/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.status === 'success') {
+          alert(`Submission mode is now ${data.mode.toUpperCase()}`);
+          checkSubmissionStatus();
+        } else {
+          alert(data.message || 'Invalid password');
+        }
+      } catch (err) {
+        alert('Network error');
+      }
+    }
+
+    async function loadUsers() {
+      const res = await fetch('/users');
+      const users = await res.json();
+      const table = document.getElementById('usertable');
+      table.innerHTML = '';
+      users.forEach(user => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${user.userdetail}</td>
+          <td>
+            <button onclick="editUser('${user.usercode}', '${user.userdetail.replace(/'/g, "\\'")}')">✏️</button>
+            <button onclick="deleteUser('${user.usercode}', '${user.userdetail.replace(/'/g, "\\'")}')">🗑️</button>
+          </td>
+        `;
+        table.appendChild(tr);
+      });
+    }
+
+    async function createUser() {
+      const usercode = document.getElementById('usercode').value;
+      const userdetail = document.getElementById('userdetail').value;
+      if (usercode.length !== 8 || !userdetail) {
+        alert('User Code must be 8 characters and Song Title cannot be empty.');
+        return;
+      }
+      const res = await fetch('/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usercode, userdetail })
+      });
+      if (res.ok) {
+        document.getElementById('usercode').value = '';
+        document.getElementById('userdetail').value = '';
+        loadUsers();
+      } else {
+        alert('Error creating entry.');
+      }
+    }
+
+    async function editUser(code, title) {
+      const newDetail = prompt('New song title:', title);
+      if (!newDetail) return;
+      const inputCode = prompt('Enter your 8-character User Code:');
+      if (inputCode !== code) {
+        alert('❌ Code mismatch. Update denied.');
+        return;
+      }
+      const res = await fetch(`/users/${code}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userdetail: newDetail })
+      });
+      if (res.ok) loadUsers();
+      else alert('Error updating.');
+    }
+
+    async function deleteUser(code, title) {
+      const confirmDelete = confirm(`Delete song: "${title}"?`);
+      if (!confirmDelete) return;
+      const inputCode = prompt('Enter your 8-character User Code:');
+      if (inputCode !== code) {
+        alert('❌ Code mismatch. Deletion denied.');
+        return;
+      }
+      const res = await fetch(`/users/${code}`, { method: 'DELETE' });
+      if (res.ok) loadUsers();
+      else alert('Error deleting.');
+    }
+
+    // Load everything on page load
+    window.onload = () => {
+      checkSubmissionStatus();
+      loadUsers();
+    };
+</script>
 </body>
 </html>
