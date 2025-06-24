@@ -2,59 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>CMS</title>
+  <title>CMS CRUD Interface</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background: #f9f9f9;
+    }
+    input {
+      margin-right: 0.5rem;
+      padding: 0.4rem;
+    }
+    button {
+      padding: 0.4rem 0.8rem;
+      margin-top: 0.5rem;
+    }
+    .status {
+      margin-top: 0.5rem;
+      font-weight: bold;
+    }
+    table {
+      margin-top: 1rem;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: left;
+    }
+    .actions button {
+      margin-right: 0.5rem;
+    }
+  </style>
 </head>
 <body>
-<h1>User Management</h1>
+<h1>User Management (CRUD)</h1>
 
 <div>
-  <input id="usercode" placeholder="User Code" />
+  <input id="usercode" placeholder="User Code" maxlength="8" />
   <input id="userdetail" placeholder="User Detail" />
-  <button onclick="createUser()">Create User</button>
+  <button onclick="createOrUpdateUser()" id="submitBtn">Create</button>
+  <button onclick="cancelEdit()" id="cancelBtn" style="display: none;">Cancel</button>
 </div>
 
 <div>
   <button onclick="retrieveUsers()">Retrieve Users</button>
   <div class="status" id="status" style="color: red;"></div>
-  <ul id="userlist"></ul>
 </div>
+
+<table>
+  <thead>
+  <tr><th>User Code</th><th>User Detail</th><th>Actions</th></tr>
+  </thead>
+  <tbody id="userlist"></tbody>
+</table>
 
 <script>
   const baseURL = 'https://sing-6855.onrender.com';
+  let isEditing = false;
+  let editingUserCode = '';
 
-  async function createUser() {
+  async function createOrUpdateUser() {
     const usercode = document.getElementById('usercode').value.trim();
     const userdetail = document.getElementById('userdetail').value.trim();
     const status = document.getElementById('status');
+
     status.innerText = '';
     status.style.color = 'red';
 
     if (!usercode || !userdetail) {
-      status.innerText = 'Please enter both User Code and User Detail';
+      status.innerText = 'Please enter both fields';
+      return;
+    }
+
+    if (usercode.length > 8) {
+      status.innerText = 'User Code must be 8 characters max';
       return;
     }
 
     try {
-      const response = await fetch(`${baseURL}/users`, {
-        method: 'POST',
+      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing ? `${baseURL}/users/${editingUserCode}` : `${baseURL}/users`;
+
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usercode, userdetail })
       });
 
-      if (!response.ok) {
-        const errorMsg = await response.text();
-        throw new Error(errorMsg || 'Error creating user');
-      }
+      if (!response.ok) throw new Error(await response.text());
 
       status.style.color = 'green';
-      status.innerText = 'User created successfully!';
-      document.getElementById('usercode').value = '';
-      document.getElementById('userdetail').value = '';
+      status.innerText = isEditing ? 'User updated' : 'User created';
+      resetForm();
       retrieveUsers();
     } catch (err) {
-      console.error(err);
-      status.innerText = 'Error creating user';
+      status.innerText = 'Error: ' + err.message;
+    }
+  }
+
+  function startEdit(code, detail) {
+    document.getElementById('usercode').value = code;
+    document.getElementById('usercode').disabled = true;
+    document.getElementById('userdetail').value = detail;
+    document.getElementById('submitBtn').textContent = 'Update';
+    document.getElementById('cancelBtn').style.display = 'inline';
+    isEditing = true;
+    editingUserCode = code;
+    document.getElementById('status').innerText = 'Editing user...';
+  }
+
+  function cancelEdit() {
+    resetForm();
+    document.getElementById('status').innerText = '';
+  }
+
+  function resetForm() {
+    document.getElementById('usercode').value = '';
+    document.getElementById('userdetail').value = '';
+    document.getElementById('usercode').disabled = false;
+    document.getElementById('submitBtn').textContent = 'Create';
+    document.getElementById('cancelBtn').style.display = 'none';
+    isEditing = false;
+    editingUserCode = '';
+  }
+
+  async function deleteUser(usercode) {
+    if (!confirm(`Delete user "${usercode}"?`)) return;
+    const status = document.getElementById('status');
+    try {
+      const response = await fetch(`${baseURL}/users/${usercode}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Delete failed');
+      status.style.color = 'green';
+      status.innerText = 'User deleted';
+      retrieveUsers();
+    } catch (err) {
+      status.innerText = 'Error deleting user';
     }
   }
 
@@ -63,15 +148,23 @@
     status.innerText = '';
     try {
       const response = await fetch(`${baseURL}/users`);
-      if (!response.ok) throw new Error('Error retrieving users');
+      if (!response.ok) throw new Error('Retrieve failed');
 
       const users = await response.json();
-      const userlist = document.getElementById('userlist');
-      userlist.innerHTML = '';
+      const tbody = document.getElementById('userlist');
+      tbody.innerHTML = '';
+
       users.forEach(({ usercode, userdetail }) => {
-        const li = document.createElement('li');
-        li.textContent = `${usercode} - ${userdetail}`;
-        userlist.appendChild(li);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${usercode}</td>
+          <td>${userdetail}</td>
+          <td class="actions">
+            <button onclick="startEdit('${usercode}', \`${userdetail.replace(/`/g, '\\`')}\`)">✏️</button>
+            <button onclick="deleteUser('${usercode}')">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(row);
       });
     } catch (err) {
       console.error(err);
