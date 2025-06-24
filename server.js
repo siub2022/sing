@@ -1,11 +1,10 @@
-// server.js
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { Pool } = require('pg');
-const path = require('path'); // ✅ For serving static files
+const path = require('path');
 
-dotenv.config();
+dotenv.config(); // Load variables from .env
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname))); // ✅ Serve static files like cms.html
+app.use(express.static(path.join(__dirname))); // Serve static files
 
 // PostgreSQL connection pool
 const pool = new Pool({
@@ -41,7 +40,7 @@ app.post('/users', async (req, res) => {
   }
 });
 
-// READ all users (with debug logging)
+// READ all users
 app.get('/users', async (req, res) => {
   console.log('📥 GET /users hit');
   try {
@@ -53,7 +52,7 @@ app.get('/users', async (req, res) => {
   }
 });
 
-// UPDATE user by usercode
+// UPDATE user
 app.put('/users/:usercode', async (req, res) => {
   const { usercode } = req.params;
   const { userdetail } = req.body;
@@ -69,7 +68,7 @@ app.put('/users/:usercode', async (req, res) => {
   }
 });
 
-// DELETE user by usercode
+// DELETE user
 app.delete('/users/:usercode', async (req, res) => {
   const { usercode } = req.params;
   try {
@@ -80,11 +79,35 @@ app.delete('/users/:usercode', async (req, res) => {
     res.status(500).json({ error: 'Error deleting user' });
   }
 });
-// ✅ Add this ping route BELOW all other routes:
+
+// ✅ ADMIN SUBMISSION TOGGLE FEATURE
+let submissionOpen = true;
+
+app.post('/admin/toggle', (req, res) => {
+  const { action, password } = req.body;
+
+  const isOpen = action === 'open' && password === process.env.ADMIN_OPEN_PASS;
+  const isClose = action === 'close' && password === process.env.ADMIN_CLOSE_PASS;
+
+  if (isOpen || isClose) {
+    submissionOpen = (action === 'open');
+    console.log(`🔧 Submission mode set to ${submissionOpen ? 'OPEN' : 'CLOSED'}`);
+    res.json({ status: 'success', mode: submissionOpen ? 'open' : 'closed' });
+  } else {
+    res.status(401).json({ status: 'error', message: 'Invalid admin password' });
+  }
+});
+
+app.get('/admin/status', (req, res) => {
+  res.json({ mode: submissionOpen ? 'open' : 'closed' });
+});
+
+// Ping route
 app.get('/ping', (req, res) => {
   console.log('🔔 /ping route hit');
   res.send('pong');
 });
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on http://localhost:${PORT}`);
